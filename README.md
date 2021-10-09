@@ -1,10 +1,10 @@
 # Midterm-Coding-Project
 
 How to run program: 
-Clone the repo from GitHub
-Open the r project in r studio 
-Select all the code (command-A)
-Hit the run button 
+- Clone the repo from GitHub
+- Open the r project in r studio 
+- Select all the code (command-A)
+- Hit the run button 
 * note that it may take a few minutes to run all the models towards the bottom of the code because of model complexity
 
 
