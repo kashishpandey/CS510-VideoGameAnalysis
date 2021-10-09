@@ -1,7 +1,7 @@
 # Midterm-Coding-Project
 
 How to run program: 
-- Clone the repo from GitHub
+- Clone the repo from GitHub (git clone in terminal)
 - Open the r project in r studio 
 - Select all the code (command-A)
 - Hit the run button 
