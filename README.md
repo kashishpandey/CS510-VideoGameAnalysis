@@ -1,7 +1,7 @@
 # Midterm-Coding-Project
 
 How to run program: 
-- Clone the repo from GitHub (git clone in terminal)
+- download the zip file 
 - Open the r project in r studio 
 - Select all the code (command-A)
 - Hit the run button 
@@ -26,6 +26,7 @@ https://www.kaggle.com/rohitbokade94/analysis-of-videogame-sales
 
 
 Things I plan on adding/ working on:
+- going to add a rmd file as well
 - adding more descriptive comments after each chunk of code 
 - adding a few more graphs
 - improving graphs further (adding theme_minimal, seeing if I can better convey the data in a different type of graph, titles, coloring the bars etc)
