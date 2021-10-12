@@ -4,6 +4,7 @@ library(tree)
 library(caret) 
 library(elasticnet)
 library(corrplot) 
+library(kernlab)
 
 # na.strings is removing null/blank values within the dataset
 vg_sales <- read.csv("dataset/Video_Games_Sales_as_at_22_Dec_2016.csv",
@@ -222,7 +223,7 @@ vg_sales <- vg_sales %>% group_by(Name) %>% mutate(num_of_platforms = n()) %>% u
 
 
 # training and testing data sets
-set.seed(2000, sample.kind = "Rounding")
+set.seed(2000)
 
 test_index <- createDataPartition(vg_sales$Global_Sales, p = 0.9, list = FALSE)
 train_set <- vg_sales[-test_index, ]
