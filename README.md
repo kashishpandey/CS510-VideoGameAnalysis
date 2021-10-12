@@ -3,6 +3,7 @@
 How to run program: 
 - download the zip file 
 - Open the r project in r studio 
+- make sure all the libraries are downloaded
 - Select all the code (command-A)
 - Hit the run button 
 * note that it may take a few minutes to run all the models towards the bottom of the code because of model complexity
