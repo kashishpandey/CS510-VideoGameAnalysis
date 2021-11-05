@@ -2,10 +2,9 @@
 
 How to run program: 
 - download the zip file 
-- Open the r project in r studio 
-- make sure all the libraries are downloaded
-- Select all the code (command-A)
-- Hit the run button 
+- open the midterm project folder 
+- open MidtermProject.Rproj in r studio 
+- run vg_analysis.Rmd or vg_analysis.R
 * note that it may take a few minutes to run all the models towards the bottom of the code because of model complexity
 
 
@@ -34,3 +33,16 @@ Things I plan on adding/ working on:
 - hyper parameter tuning for all the models 
 - seeing which models I should keep/get rid of 
 - adding different measurements for models (maybe accuracy, mse, mae, etc)
+
+
+Things I worked on since first submission:
+- added a detailed RMD file 
+- added a PDF file as well of the RMD file 
+- added several testthats
+- added overall objectives before the code (in the RMD file)
+- added more in depth comments throughout different portions of the code
+- added more information to graphs, improved some data visualization and added titles
+- did not get rid of any of the model because I felt that it was important to see the different performances
+- also did not end up adding different measurements besides RMSE because it shows us the standard deviation of the predicted errors which is exactly what I wanted to analyze and showcase
+- did quite a bit of hyperparameter tuning, but the original models made during the first submission ended up working the best
+- did change the train/test split to 80-20 instead of 90-10 which managed to improve the RMSE slightly 
