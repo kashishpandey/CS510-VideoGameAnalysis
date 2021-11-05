@@ -1,3 +1,4 @@
+library(testthat)
 library(tidyverse)
 library(ggplot2)
 library(tree) 
@@ -229,7 +230,6 @@ test_index <- createDataPartition(vg_sales$Global_Sales, p = 0.9, list = FALSE)
 train_set <- vg_sales[-test_index, ]
 test_set <- vg_sales[test_index, ]
 
-
 # including categorical data as well
 totalData <- rbind(train_set, test_set)
 for (f in 1:length(names(totalData))) {
@@ -241,6 +241,8 @@ for (f in 1:length(names(totalData))) {
 RMSE <- function(true_ratings, predicted_ratings){
   sqrt(mean((true_ratings - predicted_ratings)^2))
 }
+
+Platform
 
 # linear regression model 
 # base line model 
@@ -326,7 +328,6 @@ rmse_results <- rmse_results %>%
 
 summary(model_svm_rad)
 
-rmse_results
 
 # L1 - lasso model
 model_l1 <- train(log(Global_Sales) ~ Critic_Score +
@@ -420,3 +421,4 @@ theme(text = element_text(size=10),
   geom_col(position = "dodge") +
   geom_text(aes(label = rmse_results$RMSE), vjust = -0.2, color = "black")
 rmse_plot
+
