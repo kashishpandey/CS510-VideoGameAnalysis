@@ -1,11 +1,11 @@
 # Midterm-Coding-Project
 
+**Please note that it may take a 5-6 minutes to run all the machine learning models towards the end of the code due to model complexity!**
+
 How to run program: 
 - download the zip file 
 - open MidtermProject.Rproj in r studio 
 - run vg_analysis.Rmd 
-* Please note that it may take a few minutes to run all the machien learning models towards the end of the code because of model complexity (specifically the random forest model may take the longest)
-
 
 Dataset: https://www.kaggle.com/rush4ratio/video-game-sales-with-ratings
 
