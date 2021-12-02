@@ -2,10 +2,10 @@
 
 How to run program: 
 - download the zip file 
-- open the midterm project folder 
+- open the vg_analysis project folder 
 - open MidtermProject.Rproj in r studio 
-- run vg_analysis.Rmd or vg_analysis.R
-* note that it may take a few minutes to run all the models towards the bottom of the code because of model complexity
+- run vg_analysis.Rmd 
+* Please note that it may take a few minutes to run all the machien learning models towards the end of the code because of model complexity (specifically random forest may take the longest)
 
 
 Dataset: https://www.kaggle.com/rush4ratio/video-game-sales-with-ratings
