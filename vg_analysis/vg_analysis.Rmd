@@ -1,0 +1,752 @@
+---
+title: "Video Game Analysis"
+author: "Kashish Pandey"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+### Overall Objectives 
+This project utilizes a video game dataset containing games from 1990 - 2016 from Kaggle.
+The first portion of this project jumps into EDA (exploratory data analysis). Essentially,
+I wanted to analyze the data before performing any models on it. I also wanted to fully clean up the model and plot the basic information out first to understand what was going on; I dropped missing values, rescaled the axis, fixed the scaling of variables, and mutated some columns in order to do so. 
+
+In terms of the second portion, I wanted to see what types of models could best predict global sales. The variables used for the model were Critic_Score,User_Score,Genre,Year_of_Release,Critic_Count, User_Count, Rating, publisher_top, developer_top,num_of_platform while predicting global sales. I used Linear Regression, Support Vectors Machines, Lasso, Ridge, and Random Forest models. I decided to use the metric of RMSE (root mean square error) to compare these models because it was a concise way to measure the actual values versus predicted(the outcome). I was able to see which models were overfitting and underfitting. Through hyperparameter tuning I was able to find optimal values to further improve the models!
+
+
+### Importing Libraries 
+- The script at the beginning insures that you have all the packages needed to run the following code! It is followed by importing the libraries once they are all downloaded.
+- Optional: You can rerun this portion of code once everything is downloaded to get the message 
+"0 packages had to be installed."
+
+```{r}
+my_packages <- c("tidyverse","testthat","ggplot2", "tree","caret","elasticnet",
+                 "corrplot","kernlab","ranger")      
+not_installed <- my_packages[!(my_packages %in% installed.packages()[ , "Package"])]    
+if(length(not_installed)) install.packages(not_installed)               
+print(paste(length(not_installed), "packages had to be installed."))   
+
+library(tidyverse)
+library(testthat)
+# For plotting  
+library(ggplot2)
+# Random Forest Model
+library(tree)
+library(ranger)
+# Regression Model
+library(caret)
+# Lasso and Ridge Models
+library(elasticnet)
+# Correlation Plot 
+library(corrplot)
+# SVM Models (linear,poly,radial)
+library(kernlab)
+```
+
+### Exploratory Data Analysis
+- Reading the file
+- Na.strings is removing null/blank values within the dataset
+
+```{r}
+vg_sales <- read.csv("data/Video_Games_Sales_as_at_22_Dec_2016.csv",
+                        sep=",",na.strings=c(""," ","NA","N/A"))
+
+```
+
+- Viewing the first 5 lines of the csv file 
+
+```{r}
+head(vg_sales)
+
+```
+
+- Checking total number of null values within the dataset
+
+```{r}
+colSums(is.na(vg_sales))
+
+```
+
+### Dropping NULL and NA values from the dataset
+- There seem to be many missing values within this dataset
+- This is because it is the combination of 2 different datasets and many of the 
+original observations do not match the data from the second dataset
+- Here I am dropping all the missing values 
+
+```{r}
+vg_sales <- vg_sales[complete.cases(vg_sales), ]
+colSums(is.na(vg_sales))
+
+```
+
+- Analyzing the internal structure of each feature
+- Noticed that user_score and critic_score are different structures but we will fix that after examining the dataset for outliers 
+
+```{r}
+str(vg_sales)
+
+```
+
+- Examining outlier data for sales 
+
+```{r}
+summary(vg_sales$NA_Sales)
+summary(vg_sales$EU_Sales)
+summary(vg_sales$JP_Sales)
+summary(vg_sales$Other_Sales)
+summary(vg_sales$Global_Sales)
+
+```
+
+- Examining outlier data for score/count
+
+```{r}
+summary(vg_sales$Critic_Score)
+summary(vg_sales$Critic_Count)
+summary(vg_sales$User_Count)
+summary(vg_sales$User_Score)
+
+```
+
+- Upon analysis, critic_score seems to be an int and user_score is num. These are two different structures and if we want to compare the two we need to make them the same
+- Here I am changing the user_score to int to keep it consistent with critic_score
+
+```{r}
+vg_sales$User_Score <- as.integer(vg_sales$User_Score)
+summary(vg_sales$User_Score)
+
+```
+
+- It seems that critic_score and user_score are also out of different scales
+- We need to put critic_score and user_score on the same scale
+- user_score is only out of 10 and critic_score is out of 100
+- By multiplying user_score by 10, both critic_score and critic_score 
+are out of 100 now
+```{r}
+vg_sales$User_Score <- vg_sales$User_Score * 10
+
+```
+
+- Here we need to alter the rating variable because there are only a few occurrences of the ratings "AO","K-A", and "RP" once within the dataset. 
+- "AO" refers to Adult Only games so we can place that into the Mature Rating
+- "K-A" refers to Kids to Adults so we can place that into the Everyone Rating
+- "RP" refers to Rating Pending so we can place that into the Everyone Rating
+- I mutated the column by adding AO, K-A, and RP into their own respective categories (either Mature rating and Everyone rating)
+
+```{r}
+vg_sales %>% count(Rating)
+
+vg_sales <- vg_sales %>% mutate(Rating = ifelse(Rating == "AO", "M", Rating))
+vg_sales <- vg_sales %>% mutate(Rating = ifelse(Rating == "K-A", "E", Rating))
+vg_sales <- vg_sales %>% mutate(Rating = ifelse(Rating == "RP", "E", Rating))
+vg_sales %>% count(Rating)
+```
+
+### Data Visualization
+
+- Plotting game rating and global sales
+- Teen games have the highest global sales!
+
+```{r}
+rating_games_bar <- ggplot(vg_sales, aes(x = Rating,fill = Rating)) + geom_bar() + 
+      theme(text = element_text(size=10)) + xlab("Rating") + ylab("Global sales")+
+  theme_minimal() + ggtitle("Game Rating and Global Sales") 
+ 
+rating_games_bar
+```
+- The biggest global sales came from the platforms: Playstation 2 and Xbox360 followed by Playstation 3
+
+```{r}
+vg_sales %>% group_by(Platform) %>% 
+  summarise(vg_sales = sum(Global_Sales)) %>% ggplot() + 
+  geom_bar(aes(reorder(Platform, vg_sales), vg_sales), stat = "identity", 
+           fill = "#645188") + 
+  xlab("Platform") + ylab("Global sales") + 
+  coord_flip() + theme_minimal() + ggtitle("Game Platform and Global Sales") 
+```
+
+- Plotting genre and global sales
+- The top genre are Action, Sport, and Shooter
+
+```{r}
+vg_sales %>% group_by(Genre) %>% 
+  summarise(vg_sales = sum(Global_Sales)) %>% ggplot() + 
+  geom_bar(aes(reorder(Genre, vg_sales), vg_sales), stat = "identity", 
+           fill = "#317256") + 
+  xlab("Genre") + ylab("Global sales") + 
+  coord_flip() + theme_minimal() +
+  ggtitle("Game Genre and Global Sales") 
+
+```
+
+- Plotting release year and global sales by North America, Europe, Japan, and Other
+- Overall, North America had the highest  sales from 1990-2016
+
+```{r}
+vg_sales %>% gather(area, vg_sales, NA_Sales:Other_Sales, 
+                    factor_key = TRUE) %>% 
+  group_by(area,Year_of_Release) %>% 
+  summarise(vg_sales = sum(vg_sales)) %>% ggplot() + 
+  xlab("Year of Release") + ylab("Sales") + 
+  geom_line(aes(Year_of_Release, vg_sales, group = area, color = area)) + 
+  theme_minimal() + theme(legend.text = element_text(size = 7), 
+                          legend.position = "bottom",
+                          axis.text.x = element_text(angle = 90))+
+  theme_minimal() + ggtitle("Release Year and Global Sales by Region") 
+```
+
+- Plotting the top 10 best selling games globally 
+- Wii sports is the #1 game sold globally
+
+```{r}
+vg_sales %>% select(Name,Global_Sales) %>% arrange(desc(Global_Sales))%>% head(10)%>%
+  ggplot(aes(x=Name,y=Global_Sales,fill= Name))+geom_bar(stat="identity")+ 
+  labs(x="Game Title",y="Global Sales",
+       title="Top 10 Best Selling Games")+
+  theme(text = element_text(size=7),legend.position="right",
+        axis.text.x=element_text(angle = 90,vjust = 0.5, hjust = 1,size=7))+
+  scale_fill_brewer(name= "Game Titles", palette="Paired")
+
+```
+
+- Bar plot of global sales
+- Overall, the plot is extremely skewed
+- To fix this we need to change x axis to log axis because the distribution needs 
+to be fixed 
+
+```{r}
+ggplot(vg_sales) + geom_histogram(aes(Global_Sales), fill = "#063970")+ ggtitle("Global Sales")+ theme_minimal()
+```
+
+- By scaling the x axis to log axis it fixed the axis and provided a much better
+distribution (looks similar to a Gaussian distribution)
+
+```{r}
+ggplot(vg_sales) + geom_histogram(aes(Global_Sales), fill = "#063970") + 
+  scale_x_log10() + ggtitle("Global Sales (with scaled axis)")+ theme_minimal()
+```
+
+- Barplot of number of titles released each year
+- There seems to be a peak within the data from 2005-2009 which just means there 
+were a substantial amount of video hame titles released between those years 
+
+```{r}
+vg_sales %>% group_by(Year_of_Release) %>% 
+  count() %>% ggplot() + 
+  geom_bar(aes(Year_of_Release, n), stat = "identity", 
+           fill = "#063970") + theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Total Number of Titles Released Each Year")+
+  theme_minimal()
+
+```
+
+- Line graph of sales each year and total number of releases 
+- There is more revenue when more titles are released
+
+```{r}
+color <- c("Titles released" = "maroon4", "Global sales" = "royalblue")
+vg_sales %>% group_by(Year_of_Release) %>% 
+  summarise(vg_sales = sum(Global_Sales), count = n()) %>% 
+  ggplot() + xlab("Year of Release") + ylab("Titles released") +
+  geom_line(aes(Year_of_Release, count, group = 1, color = "Titles released")) + 
+  geom_line(aes(Year_of_Release, vg_sales, group = 1, color = "Global sales")) + 
+  theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") +
+  scale_color_manual(name="",values = color) + theme_minimal() + ggtitle("Sales Each Year and Total Number of Titles Released")
+```
+
+
+- To simplify the following graphs and to make the models easier to run later I 
+am combining platforms by their respective company
+
+```{r}
+vg_sales <- vg_sales %>% mutate(platform2 = case_when(
+  Platform %in% c("Wii", "DS", "3DS", "WiiU", "GC", "GBA") ~ "Nintendo",
+  Platform %in% c("X360", "XB", "XOne") ~ "XBox",
+  Platform %in% c("PS3", "PS4", "PS2", "PS", "PSP", "PSV") ~ "PS",
+  Platform == "PC" ~ "PC",
+  Platform == "DC" ~ "Sega"
+))
+
+```
+
+- Line graph of global sales each year for each platform
+- Nintendo and Playstation both peaked near one another 
+
+```{r}
+vg_sales %>% group_by(platform2, Year_of_Release) %>%
+  summarise(vg_sales = sum(Global_Sales)) %>% 
+  ggplot() + xlab("Year of release") + ylab("Global Sales") + 
+  geom_line(aes(Year_of_Release, vg_sales, group = platform2, color = platform2)) +
+  theme(legend.text = element_text(size = 7),
+        axis.text.x = element_text(angle = 90, hjust = 1, 
+                                   vjust = 0.5, size = 6))+
+  theme_minimal() + labs(color='Platforms') + ggtitle("Global Sales Each Year Per Platform")
+```
+
+- Bar plot of sales for each developer and global sales 
+- Nintendo has the highest global sales across the board 
+
+```{r}
+vg_sales %>% group_by(Developer) %>% 
+  summarise(vg_sales = sum(Global_Sales)) %>% 
+  arrange(desc(vg_sales)) %>% slice(1:10) %>% 
+  ggplot() + xlab("Developer") + ylab("Global Sales")+
+  geom_bar(aes(reorder(Developer, vg_sales), vg_sales), 
+           stat = "identity", fill = "#0095B6") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  ggtitle("Global Sales for Each Developer")
+```
+
+- Bar plot of sales for each gaming genre and global sales
+
+```{r}
+vg_sales %>% group_by(Genre) %>%
+  summarise(vg_sales = sum(Global_Sales)) %>%  
+  ggplot() + 
+  geom_bar(aes(reorder(Genre, vg_sales), vg_sales), stat = "identity", 
+           fill = "#BC4B4B") + 
+  ylab("Global Sales") + xlab("Genre") + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, vjust = 0.5)) +
+  ggtitle("Genre and Global Sales")
+
+```
+
+- Correlation matrix of global sales for each platform and genre
+- The top two global sales comes from Xbox 360 Shooter games and Playstation 3
+Action games 
+
+```{r}
+vg_sales %>% group_by(Platform, Genre) %>% 
+  summarise(vg_sales = sum(Global_Sales)) %>% 
+  ggplot() + geom_raster(aes(Genre, Platform, fill = vg_sales)) + 
+  ylab("") + xlab("") + 
+  scale_fill_gradient(low = "#e4dee5", high = "blue") + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                   vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 5),
+        legend.text = element_text(size = 7)) + labs(fill = "Global Sales")+
+  ggtitle("Global Sales For Each Platform and Genre")
+```
+
+### Models for results 
+
+- Overall, the sales vary depending on the platform, release year, and developer 
+- The top developers had the highest sales 
+
+
+- Publishers is categorical variable but it contains has many values
+- To combat this, we are selecting for only the top publishers 
+
+```{r}
+publishers_top <- (vg_sales %>% group_by(Publisher) %>%
+                     summarise(vg_sales = sum(Global_Sales)) %>% arrange(desc(vg_sales)) %>% 
+                     top_n(10) %>% distinct(Publisher))$Publisher
+
+```
+
+- Developers is categorical variable but it contains has many values
+- To combat this, we are selecting for only the top developers 
+
+```{r}
+developers_top <- (vg_sales %>% group_by(Developer) %>%
+                     summarise(vg_sales = sum(Global_Sales)) %>% arrange(desc(vg_sales)) %>% 
+                     top_n(10) %>% distinct(Developer))$Developer
+
+```
+
+- Creating new variable for whether a game is created by a top developer/publisher
+- Making it binary(0,1)
+
+```{r}
+vg_sales <- vg_sales %>% 
+  mutate(publisher_top = ifelse(Publisher %in% publishers_top, TRUE, FALSE),
+         developer_top = ifelse(Developer %in% developers_top, TRUE, FALSE))
+```
+
+- Checking whether games are exclusively launched on a specific platform
+
+```{r}
+vg_sales <- vg_sales %>% group_by(Name) %>% mutate(num_of_platforms = n()) %>% ungroup(Name)
+
+```
+
+- Setting seed
+
+```{r}
+set.seed(2000)
+```
+
+- Training and testing data sets
+- Here I am setting the percentage of data that goes to training as 80% training 
+and this would keep 20% for testing 
+- I tried 90-10, 80-20, and 70-30 for splitting of train/test but 80% seemed to improve RMSE the best
+
+```{r}
+test_index <- createDataPartition(vg_sales$Global_Sales, p = 0.8, list = FALSE)
+train_set <- vg_sales[-test_index, ]
+test_set <- vg_sales[test_index, ]
+```
+
+- Including categorical data within the data 
+
+```{r}
+totalData <- rbind(train_set, test_set)
+for (f in 1:length(names(totalData))) {
+  levels(train_set[, f]) <- levels(totalData[, f])
+}
+
+```
+
+### Creating RMSE function
+- RMSE refers to the Root Mean Square Error
+- The Root Mean Square Error is the standard deviation of our predicted errors 
+
+```{r}
+RMSE <- function(true_ratings, predicted_ratings){
+  sqrt(mean((true_ratings - predicted_ratings)^2))
+}
+
+```
+
+
+### Linear Regression Model
+- This is my baseline model to generally understand the results of the model 
+- Baseline models are an important way to interpret the model with less complexity
+
+```{r}
+model_lm <- train(log(Global_Sales) ~ Critic_Score +
+                     User_Score + Genre +
+                     Year_of_Release + Critic_Count +
+                     User_Count + Rating +
+                     publisher_top + developer_top +
+                     num_of_platforms, method = "lm", data = train_set)
+
+# predicted values and RMSE
+test_set$predicted_lm <- predict(model_lm, test_set)
+rmse_results <- data.frame(Method = "Linear Regression",
+                           RMSE = RMSE(log(test_set$Global_Sales), test_set$predicted_lm))
+
+```
+
+- Summary of linear regression model
+- r^2:  0.3358
+- This is not the best r^2 value, we generally want r^2 to be as close to 1 as possible 
+
+```{r}
+summary(model_lm)
+
+```
+
+- Actual vs Predicted plot
+
+```{r}
+ggplot(test_set) +
+  geom_point(aes(log(Global_Sales), predicted_lm)) +
+  geom_line(aes(log(Global_Sales), log(Global_Sales))) +
+  xlab("Actual values") + ylab("Predicted values") + 
+  ggtitle("Actual values vs Predicted values")
+```
+
+- Residual plot (error vs predicted)
+- Errors are largest for larger values of global sales this means that
+heteroskedacity present
+
+```{r}
+ggplot(test_set) + geom_point(aes(log(Global_Sales) - predicted_lm, Global_Sales)) +
+  xlab("Error") + ylab("Global sales")
+```
+
+### SVM Linear Model
+
+```{r}
+model_svm_linear <- train(log(Global_Sales) ~ Critic_Score + 
+                     User_Score + Genre + 
+                     Year_of_Release +  Critic_Count +
+                     User_Count + Rating + 
+                     publisher_top + developer_top + 
+                     num_of_platforms, method = "svmLinear",
+                   data = train_set)
+
+# predicted value and RMSE 
+test_set$predicted_svm_linear <- predict(model_svm_linear, test_set)
+rmse_results <- rmse_results %>% 
+  add_row(Method = "SVM Linear", 
+          RMSE = RMSE(log(test_set$Global_Sales), 
+                      test_set$predicted_svm_linear))
+
+```
+
+- Summary of SVM linear model
+
+```{r}
+summary(model_svm_linear)
+```
+
+### SVM Poly Model
+- This will take several minutes to run because it is
+more mathematically complex (polynomial function)
+
+```{r}
+model_svm_poly <- train(log(Global_Sales) ~ Critic_Score + 
+                     User_Score + Genre + 
+                     Year_of_Release + Critic_Count +
+                     User_Count + Rating + 
+                     publisher_top + developer_top + 
+                     num_of_platforms, method = "svmPoly",
+                   data = train_set)
+
+# predicted value and RMSE 
+test_set$predicted_svm_poly <- predict(model_svm_poly, test_set)
+rmse_results <- rmse_results %>% 
+  add_row(Method = "SVM Polynomial", 
+          RMSE = RMSE(log(test_set$Global_Sales), 
+                      test_set$predicted_svm_poly))
+
+```
+
+- SVM Poly Model Summary
+
+```{r}
+summary(model_svm_poly)
+```
+
+### SVM Radial Model
+
+```{r}
+model_svm_rad <- train(log(Global_Sales) ~ Critic_Score + 
+                          User_Score + Genre + 
+                          Year_of_Release +  Critic_Count +
+                          User_Count + Rating + 
+                          publisher_top + developer_top + 
+                          num_of_platforms, method = "svmRadial",
+                        data = train_set)
+
+# predicted value and RMSE 
+test_set$predicted_svm_rad<- predict(model_svm_rad, test_set)
+rmse_results <- rmse_results %>% 
+  add_row(Method = "SVM Radial", 
+          RMSE = RMSE(log(test_set$Global_Sales), 
+                      test_set$predicted_svm_rad))
+```
+
+- SVM Radial Summary
+
+```{r}
+summary(model_svm_rad)
+```
+
+### L1 - Lasso Model
+- Lasso regression is essentially regularized linear regression 
+- Compared to ridge regression, instead of penalizing high values, the lasso model sets
+these values equal to zero instead
+- There is a chance to end up with fewer features because of the method lasso uses (it is essentially keeping the more important features) and this is where lasso can have an upperhand over ridge
+
+```{r}
+model_l1 <- train(log(Global_Sales) ~ Critic_Score +
+                    User_Score + Genre +
+                    Year_of_Release +  Critic_Count +
+                    User_Count + Rating +
+                    publisher_top + developer_top +
+                    num_of_platforms, method = "lasso", data = train_set)
+
+# predicted values and RMSE
+test_set$predicted_l1 <- predict(model_l1, test_set)
+rmse_results <- rmse_results %>% add_row(Method = "L1 Lasso",
+                                         RMSE = RMSE(log(test_set$Global_Sales), 
+                                                     test_set$predicted_l1))
+
+```
+
+- Summary of Lasso Model
+
+```{r}
+summary(model_l1)
+```
+
+- Actual vs Predicted graph
+
+```{r}
+ggplot(test_set) +
+  geom_point(aes(log(Global_Sales), predicted_l1)) +
+  geom_line(aes(log(Global_Sales), log(Global_Sales))) +
+  xlab("Actual values") + ylab("Predicted values")+
+  ggtitle("Actual Values vs Predicted Values")
+```
+
+- Error vs Sales
+
+```{r}
+ggplot(test_set) + geom_point(aes(log(Global_Sales) - predicted_l1, Global_Sales)) +
+  xlab("Error") + ylab("Global sales")
+```
+
+### L2 - Ridge Model
+- Ridge regression is essentially regularized linear regression 
+- Instead of getting rid of features that do not contribute to the model, ridge regression minimizes its impact on the trained model
+- Ridge keeps all the features but is only significantly impacted by the most important features
+
+```{r}
+model_l2 <- train(log(Global_Sales) ~ Critic_Score +
+                    User_Score + Genre +
+                    Year_of_Release +  Critic_Count +
+                    User_Count + Rating +
+                    publisher_top + developer_top +
+                    num_of_platforms, method = "ridge", data = train_set)
+
+# predicted values and RMSE
+test_set$predicted_l2 <- predict(model_l2, test_set)
+rmse_results <- rmse_results %>% add_row (Method = "L2 Ridge",
+                           RMSE = RMSE(log(test_set$Global_Sales), test_set$predicted_l2))
+```
+
+- L2 Model Summary
+
+```{r}
+summary(model_l2)
+```
+
+- Errors vs Predicted Plot
+
+```{r}
+ggplot(test_set) +
+  geom_point(aes(log(Global_Sales), predicted_l2)) +
+  geom_line(aes(log(Global_Sales), log(Global_Sales))) +
+  xlab("Actual values") + ylab("Predicted values")+
+  ggtitle("Actual Values vs Predicted Values")
+```
+
+- Error vs Sales Plot
+
+```{r}
+ggplot(test_set) + geom_point(aes(log(Global_Sales) - predicted_l2, Global_Sales)) +
+  xlab("Error") + ylab("Global sales")
+```
+
+### Random Forest Model
+- This model will take a few minutes to run because there are multiple decision trees
+which can make the algorithm slow
+- Using trainControl() because it helps specify a particular number of parameters
+- Within trainControl(), the method = repeatedcv because the parameters will repeat accordingly
+- splitrule = extratrees,variance because extratrees helps us specify and variance is used because it is the default typically 
+- Using method = ranger because it is performing recursive partitioning aka fast implementation of random forests
+
+```{r}
+cntrl <- trainControl(method = "repeatedcv", number = 10,
+                      repeats = 3)
+tunegrid <- expand.grid(.mtry=c(1:5),
+                        .min.node.size = seq(1, 5, 1),
+                        .splitrule = c("extratrees", "variance"))
+model_rf <- train(log(Global_Sales) ~ Critic_Score +
+                    User_Score + Genre +
+                    Year_of_Release + Critic_Count +
+                    User_Count + Rating +
+                    publisher_top + developer_top +
+                    num_of_platforms, data = train_set,
+                  method = "ranger", trControl = cntrl,
+                  tuneGrid = tunegrid)
+
+# predicted and RMSE
+test_set$predicted_rf <- predict(model_rf, test_set)
+rmse_results <- rmse_results %>% add_row(Method = "Random Forest",
+                RMSE = RMSE(log(test_set$Global_Sales), test_set$predicted_rf))
+```
+
+- Actual vs Predicted
+
+```{r}
+ggplot(test_set) +
+  geom_point(aes(log(Global_Sales), predicted_rf)) +
+  geom_line(aes(log(Global_Sales), log(Global_Sales))) +
+  xlab("Actual values") + ylab("Predicted values") +
+  labs(caption =
+         paste("R-squared",
+               format(model_rf$finalModel$r.squared,
+                      digits = 2)))+ 
+  ggtitle("Actual Values vs Predicted Values")
+```
+
+- Error vs Global Sales
+
+```{r}
+ggplot(test_set) + geom_point(aes(log(Global_Sales) - predicted_rf, Global_Sales)) +
+  xlab("Error") + ylab("Global Sales")
+```
+
+
+
+### Test That the RMSE is less than 2 
+
+- The reason why I am setting the limit for RMSE to 2 is because we want the RMSE value to be as low as possible, in general the models' RMSE were rarely going over 2 so I set that limit based on patterns that I saw
+
+```{r}
+# testing linear regression RMSE 
+linear_regression_test <- rmse_results[1,2]
+
+test_that("double",{
+  expect_lt(linear_regression_test,2)
+})
+
+# testing SVM linear RMSE 
+SVM_Linear_test <- rmse_results[2,2]
+
+test_that("double",{
+  expect_lt(SVM_Linear_test,2)
+})
+
+# testing SVM poly RMSE 
+SVM_Polynomial_test <- rmse_results[3,2]
+test_that("double",{
+  expect_lt(SVM_Polynomial_test,2)
+})
+
+
+# testing SVM radial RMSE 
+SVM_Radial_test <- rmse_results[4,2]
+test_that("double",{
+  expect_lt(SVM_Radial_test,2)
+})
+
+# testing L1 RMSE
+L1_test <- rmse_results[5,2]
+test_that("double",{
+  expect_lt(L1_test,2)
+})
+
+# testing L2 RMSE
+L2_test <- rmse_results[6,2]
+test_that("double",{
+  expect_lt(L2_test,2)
+})
+
+# testing random forest RMSE
+random_forest_test <- rmse_results[7,2]
+test_that("double",{
+  expect_lt(random_forest_test,2)
+})
+
+```
+
+- Comparing the RMSE values of each model
+
+```{r}
+print(rmse_results)
+
+```
+
+
+- Plotting and comparing all the models RMSE's 
+- Random forest did best!
+- Note that the lower the RMSE, the better the fit
+
+```{r}
+rmse_plot <- ggplot(rmse_results, aes(x = RMSE,y = Method, fill = Method))+
+  geom_bar(stat="identity")+
+  xlab("RMSE") + ylab("Model Type")
+
+theme(text = element_text(size=10), 
+      legend.position="right",
+      axis.text.x=element_text(angle = 90,vjust = 0.5,hjust = 1,size=8))
+
+rmse_plot
+```
