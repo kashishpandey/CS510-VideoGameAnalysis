@@ -5,7 +5,7 @@
 How to run program: 
 - download the zip file 
 - open MidtermProject.Rproj in r studio 
-- run vg_analysis.Rmd 
+- knit vg_analysis.Rmd (check that the knit directory is either document directory/project directory)
 
 Dataset: https://www.kaggle.com/rush4ratio/video-game-sales-with-ratings
 
