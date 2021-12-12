@@ -7,4 +7,6 @@ How to run program:
 - open MidtermProject.Rproj in r studio 
 - knit vg_analysis.Rmd (check that the knit directory is either document directory/project directory)
 
+In the docs folder you will find a pdf of the final write up and pdf of the code!
+
 Dataset: https://www.kaggle.com/rush4ratio/video-game-sales-with-ratings
