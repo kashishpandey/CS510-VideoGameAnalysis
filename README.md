@@ -1,4 +1,4 @@
-# Midterm-Coding-Project
+# Video Game Analysis Final Project and Writeup
 
 In the docs folder you will find a pdf of the final write up and pdf of the code!
 
